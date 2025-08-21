@@ -2,41 +2,32 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
-import type { Event, FilterState, AnimatedArc } from '@/lib/types';
 import { SEVERITY_COLORS, getFamilyColor } from '@/lib/colors';
 import { fetchWorld110m, toCountries, makeProjection, createArcPath } from '@/lib/geo';
 import { simulateLoop } from '@/lib/stream';
 import Tooltip from './Tooltip';
 
-interface ThreatMapProps {
-  filters: FilterState;
-  events: Event[];
-}
-
-interface TooltipState {
-  visible: boolean;
-  x: number;
-  y: number;
-  event: Event | null;
-}
-
-interface Dimensions {
-  width: number;
-  height: number;
-}
-
-export default function ThreatMap({ filters, events }: ThreatMapProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
-  const resizeObserverRef = useRef<ResizeObserver>();
+export default function ThreatMap({ filters, events }) {
+  const containerRef = useRef(null);
+  const svgRef = useRef(null);
+  const canvasRef = useRef(null);
+  const animationRef = useRef();
+  const resizeObserverRef = useRef();
   const mountedRef = useRef(true);
   
-  const [dimensions, setDimensions] = useState<Dimensions>({ width: 800, height: 600 });
-  const [projection, setProjection] = useState<d3.GeoProjection | null>(null);
-  const [animatedArcs, setAnimatedArcs] = useState<AnimatedArc[]>([]);
-  const [tooltip, setTooltip] = useState<TooltipState>({
+  const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  const [projection, setProjection] = useState(() => {
+    // Create a default projection that won't cause errors
+    try {
+      return d3.geoNaturalEarth1().scale(100).translate([400, 300]).center([0, 0]);
+    } catch (error) {
+      console.error('Error creating default projection:', error);
+      return null;
+    }
+  });
+  const [projectionReady, setProjectionReady] = useState(false);
+  const [animatedArcs, setAnimatedArcs] = useState([]);
+  const [tooltip, setTooltip] = useState({
     visible: false,
     x: 0,
     y: 0,
@@ -85,11 +76,21 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
       
       const newProjection = makeProjection(width, height);
       
-      if (!newProjection || !mountedRef.current) {
+      if (!newProjection) {
+        console.error('Failed to create projection');
         return;
       }
       
-      setProjection(newProjection);
+      if (!mountedRef.current) {
+        console.error('Component unmounted during projection creation');
+        return;
+      }
+      
+      // Only set projection if component is still mounted
+      if (mountedRef.current) {
+        setProjection(newProjection);
+        setProjectionReady(true);
+      }
 
       // Clear existing content
       const svg = d3.select(svgRef.current);
@@ -118,12 +119,12 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
   }, [dimensions]);
 
   // Handle new events
-  const handleNewEvent = useCallback((event: Event) => {
-    if (!mountedRef.current || !projection) return;
+  const handleNewEvent = useCallback((event) => {
+    if (!mountedRef.current || !projection || !projectionReady) return;
 
     // Check if event passes filters
     if (!filters.severities.includes(event.severity) ||
-        !filters.families.includes(event.family as any)) {
+        !filters.families.includes(event.family)) {
       return;
     }
 
@@ -139,13 +140,13 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
         alpha: 1
       }];
     });
-  }, [projection, filters]);
+  }, [projection, projectionReady, filters]);
 
   // Animation loop
-  const animate = useCallback((currentTime: number) => {
+  const animate = useCallback((currentTime) => {
     if (!mountedRef.current) return;
     
-    if (!canvasRef.current || !projection) {
+    if (!canvasRef.current || !projection || !projectionReady) {
       animationRef.current = requestAnimationFrame(animate);
       return;
     }
@@ -177,7 +178,7 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
 
       // Draw arcs in next frame to avoid state update issues
       requestAnimationFrame(() => {
-        if (!mountedRef.current || !ctx || !projection) return;
+        if (!mountedRef.current || !ctx || !projection || !projectionReady) return;
         
         updated.forEach(arc => {
           try {
@@ -253,21 +254,21 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
     }
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [projection, dimensions, filters, animationDuration, showTravelingDots]);
+  }, [projection, projectionReady, dimensions, filters, animationDuration, showTravelingDots]);
 
   // Handle mouse move for tooltips
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!mountedRef.current || !projection || !canvasRef.current) return;
+  const handleMouseMove = useCallback((e) => {
+    if (!mountedRef.current || !projection || !projectionReady || !canvasRef.current) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
     // Find nearest arc within 10px
-    let nearestArc: AnimatedArc | null = null;
+    let nearestArc = null;
     let minDistance = 10;
 
-    animatedArcs.forEach((arc: AnimatedArc) => {
+    animatedArcs.forEach((arc) => {
       try {
         const path = createArcPath(projection, arc.event.src, arc.event.dst);
         if (!path) return;
@@ -305,9 +306,9 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
       visible: !!nearestArc,
       x: e.clientX,
       y: e.clientY,
-      event: nearestArc ? (nearestArc as AnimatedArc).event : null
+      event: nearestArc ? nearestArc.event : null
     });
-  }, [projection, animatedArcs]);
+  }, [projection, projectionReady, animatedArcs]);
 
   // Handle mouse leave
   const handleMouseLeave = useCallback(() => {
@@ -316,7 +317,7 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
   }, []);
 
   // Resize handler
-  const handleResize = useCallback((entries: ResizeObserverEntry[]) => {
+  const handleResize = useCallback((entries) => {
     if (!mountedRef.current) return;
     
     const entry = entries[0];
@@ -356,14 +357,28 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
   // Initialize map when dimensions change
   useEffect(() => {
     if (dimensions.width > 0 && dimensions.height > 0) {
+      setProjectionReady(false);
+      setIsMapInitialized(false);
       initializeMap();
     }
   }, [dimensions, initializeMap]);
 
   // Start animation loop
   useEffect(() => {
-    if (isMapInitialized) {
-      animationRef.current = requestAnimationFrame(animate);
+    if (isMapInitialized && projectionReady) {
+      // Add a small delay to ensure projection is fully ready
+      const timer = setTimeout(() => {
+        if (mountedRef.current && projection && projectionReady) {
+          animationRef.current = requestAnimationFrame(animate);
+        }
+      }, 200);
+      
+      return () => {
+        clearTimeout(timer);
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
     }
     
     return () => {
@@ -371,18 +386,34 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [animate, isMapInitialized]);
+  }, [animate, isMapInitialized, projectionReady, projection]);
 
   // Start event simulation
   useEffect(() => {
-    if (!isMapInitialized) return;
+    if (!isMapInitialized || !projectionReady) return;
     
-    const cleanup = simulateLoop(events, handleNewEvent, 2000);
-    return cleanup;
-  }, [events, handleNewEvent, isMapInitialized]);
+    // Add a small delay to ensure everything is ready
+    const timer = setTimeout(() => {
+      if (mountedRef.current && projection && projectionReady) {
+        const cleanup = simulateLoop(events, handleNewEvent, 2000);
+        return cleanup;
+      }
+    }, 500);
+    
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [events, handleNewEvent, isMapInitialized, projectionReady, projection]);
 
   return (
     <div className="relative w-full h-full" ref={containerRef}>
+      {/* Loading State */}
+      {!isMapInitialized && (
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm z-50">
+          <div className="text-white text-lg">Loading map...</div>
+        </div>
+      )}
+      
       {/* SVG World Map */}
       <svg
         ref={svgRef}
@@ -398,9 +429,9 @@ export default function ThreatMap({ filters, events }: ThreatMapProps) {
         width={dimensions.width}
         height={dimensions.height}
         className="absolute top-0 left-0 z-20"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        style={{ cursor: 'crosshair' }}
+        onMouseMove={isMapInitialized ? handleMouseMove : undefined}
+        onMouseLeave={isMapInitialized ? handleMouseLeave : undefined}
+        style={{ cursor: isMapInitialized ? 'crosshair' : 'default' }}
       />
       
       {/* Tooltip */}
