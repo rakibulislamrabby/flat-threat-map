@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
 import { SEVERITY_COLORS, getFamilyColor } from '../lib/colors';
 import { fetchWorld110m, toCountries, makeProjection, createArcPath } from '../lib/geo';
-import { simulateLoop } from '..//lib/stream';
+import { simulateLoop } from '../lib/stream';
 import Tooltip from './Tooltip';
 
 export default function ThreatMap({ filters, events }) {
@@ -469,7 +469,7 @@ export default function ThreatMap({ filters, events }) {
   }, [events, handleNewEvent, isMapInitialized, projectionReady, projection]);
 
   return (
-    <div className="relative w-full h-full " ref={containerRef}>
+    <div className="relative w-full h-full bg-slate-950" ref={containerRef}>
       {/* Loading State */}
       {!isMapInitialized && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm z-50">

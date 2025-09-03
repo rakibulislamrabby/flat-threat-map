@@ -15,9 +15,9 @@ export default function Home() {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
 
   return (
-        <div className="h-full bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
-      <header className="bg-white/5 backdrop-blur-md border-b border-white/10 px-6 py-6">
+      <header className="bg-slate-900/80 backdrop-blur-md border-b border-slate-700/50 px-6 py-6">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between">
             <div>
@@ -46,7 +46,7 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-7xl mx-auto px-6 py-8 flex-1">
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8 h-[calc(100vh-240px)]">
           {/* Controls Panel (sticky) */}
           <div className="xl:col-span-1">
@@ -57,8 +57,8 @@ export default function Home() {
 
           {/* Map Container (glass morphism) */}
           <div className="xl:col-span-4">
-            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl overflow-hidden h-full">
-              <div className="p-4 border-b border-white/10 bg-white/5">
+            <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden h-full">
+              <div className="p-4 border-b border-slate-700/50 bg-slate-800/50">
                 <div className="flex items-center justify-between">
                   <h2 className="text-white font-semibold text-lg">Global Threat Activity</h2>
                   <div className="flex items-center gap-4 text-sm text-slate-300">

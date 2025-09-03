@@ -60,7 +60,7 @@ export default function ThreatControls({ filters, onFiltersChange }) {
   };
 
   return (
-    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl shadow-2xl p-6">
+    <div className="bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 rounded-2xl shadow-2xl p-6 h-full">
       <div className="flex items-center gap-3 mb-6">
         <div className="w-8 h-8 bg-gradient-to-r from-[#00ff88] to-[#00cc6a] rounded-lg flex items-center justify-center">
           <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +125,7 @@ export default function ThreatControls({ filters, onFiltersChange }) {
         </div>
         <div className="grid grid-cols-1 gap-2 max-h-64 overflow-y-auto custom-scrollbar">
           {THREAT_FAMILIES.map(family => (
-            <label key={family} className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-white/5 transition-colors">
+            <label key={family} className="flex items-center gap-3 cursor-pointer group p-2 rounded-lg hover:bg-slate-800/50 transition-colors">
               <div className="relative">
                 <input
                   type="checkbox"
@@ -221,7 +221,7 @@ export default function ThreatControls({ filters, onFiltersChange }) {
       </div>
 
       {/* Active Filters Summary */}
-      <div className="mt-6 p-4 bg-white/5 rounded-lg border border-white/10">
+      <div className="mt-6 p-4 bg-slate-800/50 rounded-lg border border-slate-700/50">
         <h5 className="text-sm font-semibold text-slate-300 mb-2">Active Filters</h5>
         <div className="text-xs text-slate-400 space-y-1">
           <div>Severities: {localFilters.severities.length}/3</div>
