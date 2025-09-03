@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as d3 from 'd3';
-import { SEVERITY_COLORS, getFamilyColor } from '@/lib/colors';
-import { fetchWorld110m, toCountries, makeProjection, createArcPath } from '@/lib/geo';
-import { simulateLoop } from '@/lib/stream';
+import { SEVERITY_COLORS, getFamilyColor } from '../lib/colors';
+import { fetchWorld110m, toCountries, makeProjection, createArcPath } from '../lib/geo';
+import { simulateLoop } from '..//lib/stream';
 import Tooltip from './Tooltip';
 
 export default function ThreatMap({ filters, events }) {
@@ -46,7 +46,7 @@ export default function ThreatMap({ filters, events }) {
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }, []);
 
-  const animationDuration = prefersReducedMotion ? 600 : 1200; // ms
+  const animationDuration = prefersReducedMotion ? 600 : 1500; // ms - faster animation for better movement
   const showTravelingDots = !prefersReducedMotion;
 
   // Cleanup on unmount
@@ -101,15 +101,15 @@ export default function ThreatMap({ filters, events }) {
       // Create path generator
       const path = d3.geoPath().projection(newProjection);
 
-      // Draw countries
-      svg.selectAll('path')
-        .data(countries)
-        .enter()
-        .append('path')
-        .attr('d', path)
-        .attr('fill', '#f8fafc') // Light gray for land
-        .attr('stroke', '#e2e8f0') // Border color
-        .attr('stroke-width', 0.5);
+             // Draw countries with enhanced styling
+       svg.selectAll('path')
+         .data(countries)
+         .enter()
+         .append('path')
+         .attr('d', path)
+         .attr('fill', '#0f172a') // Very dark background for better contrast
+         .attr('stroke', '#1e293b') // Dark borders
+         .attr('stroke-width', 1);
 
       setIsMapInitialized(true);
 
@@ -191,56 +191,119 @@ export default function ThreatMap({ filters, events }) {
             const pathLength = pathElement.getTotalLength();
             if (pathLength === 0) return;
 
-            // Draw arc trail
-            ctx.strokeStyle = getFamilyColor(arc.event.family);
-            ctx.globalAlpha = arc.alpha * 0.3;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            
-            const trailLength = Math.min(arc.progress * pathLength, pathLength * 0.3);
-            const trailStart = Math.max(0, arc.progress * pathLength - trailLength);
-            
-            for (let i = 0; i <= 50; i++) {
-              const t = trailStart + (i / 50) * trailLength;
-              if (t > arc.progress * pathLength) break;
-              
-              try {
-                const point = pathElement.getPointAtLength(t);
-                if (point && isFinite(point.x) && isFinite(point.y)) {
-                  if (i === 0) {
-                    ctx.moveTo(point.x, point.y);
-                  } else {
-                    ctx.lineTo(point.x, point.y);
-                  }
-                }
-              } catch (error) {
-                continue;
-              }
-            }
-            ctx.stroke();
+                         // Draw arc trail with enhanced visibility
+             const trailColor = getFamilyColor(arc.event.family);
+             ctx.strokeStyle = trailColor;
+             ctx.globalAlpha = arc.alpha * 0.8; // Higher opacity for better visibility
+             ctx.lineWidth = 4; // Even thicker line
+             ctx.lineCap = 'round';
+             ctx.lineJoin = 'round';
+             ctx.beginPath();
+             
+             // Calculate the moving trail - this is the key for animation
+             const currentPosition = arc.progress * pathLength;
+             const trailLength = Math.min(currentPosition, pathLength * 0.5); // Longer trail
+             const trailStart = Math.max(0, currentPosition - trailLength);
+             
+             // Draw the moving trail
+             for (let i = 0; i <= 100; i++) { // More points for smoother curve
+               const t = trailStart + (i / 100) * trailLength;
+               if (t > currentPosition) break;
+               
+               try {
+                 const point = pathElement.getPointAtLength(t);
+                 if (point && isFinite(point.x) && isFinite(point.y)) {
+                   if (i === 0) {
+                     ctx.moveTo(point.x, point.y);
+                   } else {
+                     ctx.lineTo(point.x, point.y);
+                   }
+                 }
+               } catch (error) {
+                 continue;
+               }
+             }
+             ctx.stroke();
+             
+             // Add glow effect for all arcs
+             ctx.shadowColor = trailColor;
+             ctx.shadowBlur = 6;
+             ctx.stroke();
+             ctx.shadowBlur = 0;
 
-            // Draw traveling dot
-            if (showTravelingDots && arc.progress < 1) {
-              try {
-                const dotT = arc.progress * pathLength;
-                const dotPoint = pathElement.getPointAtLength(dotT);
-                
-                if (dotPoint && isFinite(dotPoint.x) && isFinite(dotPoint.y)) {
-                  ctx.globalAlpha = arc.alpha;
-                  ctx.fillStyle = SEVERITY_COLORS[arc.event.severity];
-                  ctx.beginPath();
-                  ctx.arc(dotPoint.x, dotPoint.y, 3, 0, 2 * Math.PI);
-                  ctx.fill();
-                }
-              } catch (error) {
-                // Skip invalid dot position
-              }
-            }
-          } catch (error) {
-            console.error('Error drawing arc:', error);
-          }
-        });
-      });
+                                      // Draw traveling dot with enhanced visibility
+             if (showTravelingDots && arc.progress < 1) {
+               try {
+                 const dotT = arc.progress * pathLength;
+                 const dotPoint = pathElement.getPointAtLength(dotT);
+                 
+                 if (dotPoint && isFinite(dotPoint.x) && isFinite(dotPoint.y)) {
+                   const dotSize = 6; // Larger dot for better visibility
+                   
+                   // Draw outer glow for all dots
+                   ctx.shadowColor = trailColor;
+                   ctx.shadowBlur = 8;
+                   
+                   ctx.globalAlpha = arc.alpha;
+                   ctx.fillStyle = trailColor; // Use same color as arc
+                   ctx.beginPath();
+                   ctx.arc(dotPoint.x, dotPoint.y, dotSize, 0, 2 * Math.PI);
+                   ctx.fill();
+                   
+                   // Reset shadow
+                   ctx.shadowBlur = 0;
+                   
+                   // Add pulse effect for all dots
+                   const pulseSize = dotSize + Math.sin(Date.now() * 0.008) * 3;
+                   ctx.globalAlpha = arc.alpha * 0.4;
+                   ctx.beginPath();
+                   ctx.arc(dotPoint.x, dotPoint.y, pulseSize, 0, 2 * Math.PI);
+                   ctx.fill();
+                   ctx.globalAlpha = arc.alpha;
+                 }
+               } catch (error) {
+                 // Skip invalid dot position
+               }
+             }
+           } catch (error) {
+             console.error('Error drawing arc:', error);
+           }
+         });
+         
+         // Draw source and destination markers for each arc
+         updated.forEach(arc => {
+           try {
+             // Source marker (attack origin)
+             const srcPoint = projection([arc.event.src.lon, arc.event.src.lat]);
+             if (srcPoint && isFinite(srcPoint[0]) && isFinite(srcPoint[1])) {
+               ctx.globalAlpha = arc.alpha * 0.9;
+               ctx.fillStyle = trailColor; // Same color as arc
+               ctx.beginPath();
+               ctx.arc(srcPoint[0], srcPoint[1], 5, 0, 2 * Math.PI);
+               ctx.fill();
+               
+               // Add pulse effect for source
+               const pulseSize = 5 + Math.sin(Date.now() * 0.005) * 4;
+               ctx.globalAlpha = arc.alpha * 0.3;
+               ctx.beginPath();
+               ctx.arc(srcPoint[0], srcPoint[1], pulseSize, 0, 2 * Math.PI);
+               ctx.fill();
+             }
+             
+             // Destination marker (attack target)
+             const dstPoint = projection([arc.event.dst.lon, arc.event.dst.lat]);
+             if (dstPoint && isFinite(dstPoint[0]) && isFinite(dstPoint[1])) {
+               ctx.globalAlpha = arc.alpha * 0.9;
+               ctx.fillStyle = trailColor; // Same color as arc
+               ctx.beginPath();
+               ctx.arc(dstPoint[0], dstPoint[1], 4, 0, 2 * Math.PI);
+               ctx.fill();
+             }
+           } catch (error) {
+             // Skip marker drawing if there's an error
+           }
+         });
+       });
 
       return updated;
     });
@@ -395,7 +458,7 @@ export default function ThreatMap({ filters, events }) {
     // Add a small delay to ensure everything is ready
     const timer = setTimeout(() => {
       if (mountedRef.current && projection && projectionReady) {
-        const cleanup = simulateLoop(events, handleNewEvent, 2000);
+                 const cleanup = simulateLoop(events, handleNewEvent, 1000); // Even faster attack simulation
         return cleanup;
       }
     }, 500);
@@ -406,7 +469,7 @@ export default function ThreatMap({ filters, events }) {
   }, [events, handleNewEvent, isMapInitialized, projectionReady, projection]);
 
   return (
-    <div className="relative w-full h-full" ref={containerRef}>
+    <div className="relative w-full h-full " ref={containerRef}>
       {/* Loading State */}
       {!isMapInitialized && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm z-50">

@@ -19,18 +19,18 @@
 .slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
   height: 20px;
   width: 20px;
   border-radius: 50%;
   border: 2px solid #1e293b;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
   transition: all 0.2s ease;
 }
 
 .slider::-webkit-slider-thumb:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 255, 136, 0.4);
 }
 
 .slider::-moz-range-track {
@@ -41,24 +41,24 @@
 }
 
 .slider::-moz-range-thumb {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
   height: 20px;
   width: 20px;
   border-radius: 50%;
   border: 2px solid #1e293b;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 255, 136, 0.3);
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .slider::-moz-range-thumb:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 255, 136, 0.4);
 }
 
 /* Focus styles */
 *:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #00ff88;
   outline-offset: 2px;
 }
 
@@ -100,7 +100,7 @@
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, #00ff88, #00cc6a);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -148,7 +148,7 @@
 
 /* Enhanced button styles */
 .btn-primary {
-  @apply bg-gradient-to-r from-blue-500 to-purple-500 text-white px-4 py-2 rounded-lg font-medium hover:from-blue-600 hover:to-purple-600 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200;
+  @apply bg-gradient-to-r from-[#00ff88] to-[#00cc6a] text-white px-4 py-2 rounded-lg font-medium hover:from-[#00cc6a] hover:to-[#00aa55] focus:ring-2 focus:ring-[#00ff88] focus:ring-offset-2 focus:ring-offset-slate-900 transition-all duration-200;
 }
 
 .btn-secondary {
