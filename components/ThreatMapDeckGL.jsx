@@ -146,18 +146,16 @@ export default function ThreatMapDeckGL({ filters, events }) {
           .filter(arc => arc.startTime > cutoffTime)
           .map(arc => {
             const age = now - arc.startTime;
-            const progress = Math.min(age / 2000, 1); // 2 second animation for faster flow
+            const progress = Math.min(age / 2000, 1); // 2 second animation
             const alpha = Math.max(1 - age / (filters.timeWindow * 1000), 0.1);
             
-            // Create a flowing effect - arc becomes brighter as it progresses
-            const flowAlpha = progress < 0.8 ? 
-              Math.max(alpha, 0.4 + 0.6 * Math.sin(progress * Math.PI)) : 
-              alpha;
+            // Smooth animated arcs between fixed country points
+            const smoothProgress = progress * progress * (3.0 - 2.0 * progress);
             
             return {
               ...arc,
-              progress,
-              alpha: flowAlpha
+              progress: smoothProgress,
+              alpha: Math.max(alpha, 0.3)
             };
           });
       });
@@ -166,40 +164,39 @@ export default function ThreatMapDeckGL({ filters, events }) {
     return () => clearInterval(animationInterval);
   }, [filters.timeWindow]);
 
-  // Convert events to deck.gl arc data
-  const arcData = animatedArcs.map(arc => ({
-    id: arc.id,
-    sourcePosition: [arc.event.src.lon, arc.event.src.lat],
-    targetPosition: [arc.event.dst.lon, arc.event.dst.lat],
-    color: getSeverityColor(arc.event.severity),
-    alpha: arc.alpha,
-    progress: arc.progress,
-    event: arc.event
-  }));
-
-  // Convert events to deck.gl scatter plot data for markers with pulsing effect
-  const markerData = animatedArcs.flatMap(arc => {
+  // Convert events to deck.gl arc data with dash animation
+  const arcData = animatedArcs.map(arc => {
     const now = Date.now();
     const age = now - arc.startTime;
-    const pulseScale = 1 + 0.5 * Math.sin((age / 200) % (2 * Math.PI)); // Pulsing effect
+    const dashOffset = (age / 50) % 20; // Moving dash effect
     
-    return [
-      {
-        position: [arc.event.src.lon, arc.event.src.lat],
-        color: [...getSeverityColor(arc.event.severity), arc.alpha * 255],
-        radius: 6 * pulseScale,
-        type: 'source',
-        event: arc.event
-      },
-      {
-        position: [arc.event.dst.lon, arc.event.dst.lat],
-        color: [...getSeverityColor(arc.event.severity), arc.alpha * 255],
-        radius: 5 * pulseScale,
-        type: 'destination',
-        event: arc.event
-      }
-    ];
+    return {
+      id: arc.id,
+      sourcePosition: [arc.event.src.lon, arc.event.src.lat],
+      targetPosition: [arc.event.dst.lon, arc.event.dst.lat],
+      color: getSeverityColor(arc.event.severity),
+      alpha: arc.alpha,
+      progress: arc.progress,
+      dashOffset: dashOffset,
+      event: arc.event
+    };
   });
+
+  // Convert events to simple markers - minimalist style
+  const markerData = animatedArcs.flatMap(arc => [
+    {
+      position: [arc.event.src.lon, arc.event.src.lat],
+      color: [...getSeverityColor(arc.event.severity), arc.alpha * 180],
+      type: 'source',
+      event: arc.event
+    },
+    {
+      position: [arc.event.dst.lon, arc.event.dst.lat],
+      color: [...getSeverityColor(arc.event.severity), arc.alpha * 180],
+      type: 'destination',
+      event: arc.event
+    }
+  ]);
 
   // Get country labels for active attacks
   const labelData = [];
@@ -228,40 +225,62 @@ export default function ThreatMapDeckGL({ filters, events }) {
     }
   });
 
-  // Create traveling dots data for arcs
+  // Create traveling dots on arcs for tech effect
   const travelingDots = animatedArcs
     .filter(arc => arc.progress < 1 && arc.alpha > 0.3)
     .map(arc => {
-      // Calculate position along the arc
+      // Calculate position along the curved arc
       const srcLon = arc.event.src.lon;
       const srcLat = arc.event.src.lat;
       const dstLon = arc.event.dst.lon;
       const dstLat = arc.event.dst.lat;
       
-      // Simple linear interpolation for the traveling dot
-      const dotLon = srcLon + (dstLon - srcLon) * arc.progress;
-      const dotLat = srcLat + (dstLat - srcLat) * arc.progress;
+      // Create curved path interpolation
+      const midLon = (srcLon + dstLon) / 2;
+      const midLat = (srcLat + dstLat) / 2;
+      
+      // Add arc height for curved path
+      const distance = Math.sqrt(Math.pow(dstLon - srcLon, 2) + Math.pow(dstLat - srcLat, 2));
+      const arcHeight = Math.min(distance / 120, 1.5);
+      
+      // Calculate curved position
+      const t = arc.progress;
+      const dotLon = (1-t)*(1-t)*srcLon + 2*(1-t)*t*midLon + t*t*dstLon;
+      const dotLat = (1-t)*(1-t)*srcLat + 2*(1-t)*t*(midLat + arcHeight) + t*t*dstLat;
       
       return {
         position: [dotLon, dotLat],
         color: [...getSeverityColor(arc.event.severity), 255],
-        radius: 4 + arc.alpha * 2,
+        radius: 4,
         event: arc.event
       };
     });
 
+  // Tech-style curved arc data
+  const techArcData = arcData.map(arc => ({
+    ...arc,
+    // Higher curvature for tech/circular appearance
+    curvature: Math.min(
+      Math.sqrt(
+        Math.pow(arc.targetPosition[0] - arc.sourcePosition[0], 2) + 
+        Math.pow(arc.targetPosition[1] - arc.sourcePosition[1], 2)
+      ) / 60, // More pronounced curvature
+      3 // Higher max height for tech look
+    )
+  }));
+
   // Layers
   const layers = [
-    // Threat Arcs Layer
+    // Tech-style Curved Arcs
     new ArcLayer({
-      id: 'threat-arcs',
-      data: arcData,
+      id: 'tech-threat-arcs',
+      data: techArcData,
       getSourcePosition: d => d.sourcePosition,
       getTargetPosition: d => d.targetPosition,
-      getSourceColor: d => [...d.color, Math.min(d.alpha * 255, 255)],
-      getTargetColor: d => [...d.color.map(c => c * 0.7), Math.min(d.alpha * 255, 255)], // Fade to darker at target
-      getWidth: d => 1.5 + d.alpha * 1.5, // Variable width based on alpha
-      getHeight: 0.6,
+      getSourceColor: d => [...d.color, Math.min(d.alpha * 200, 200)],
+      getTargetColor: d => [...d.color, Math.min(d.alpha * 150, 150)],
+      getWidth: 2, // Slightly thicker for tech look
+      getHeight: d => d.curvature,
       pickable: true,
       billboard: false,
       widthUnits: 'pixels',
@@ -278,12 +297,25 @@ export default function ThreatMapDeckGL({ filters, events }) {
         }
       }
     }),
+    
+    // Animated Traveling Dots
     new ScatterplotLayer({
-      id: 'threat-markers',
-      data: markerData,
+      id: 'traveling-dots',
+      data: travelingDots,
       getPosition: d => d.position,
       getColor: d => d.color,
       getRadius: d => d.radius,
+      radiusUnits: 'pixels',
+      pickable: false
+    }),
+    
+    // Simple source/destination markers
+    new ScatterplotLayer({
+      id: 'country-markers',
+      data: markerData,
+      getPosition: d => d.position,
+      getColor: d => d.color,
+      getRadius: d => 3, // Fixed small size for minimalist look
       radiusUnits: 'pixels',
       pickable: true,
       onHover: (info, event) => {
@@ -298,17 +330,6 @@ export default function ThreatMapDeckGL({ filters, events }) {
           setTooltip(prev => ({ ...prev, visible: false }));
         }
       }
-    }),
-    
-    // Traveling Dots Layer
-    new ScatterplotLayer({
-      id: 'traveling-dots',
-      data: travelingDots,
-      getPosition: d => d.position,
-      getColor: d => d.color,
-      getRadius: d => d.radius,
-      radiusUnits: 'pixels',
-      pickable: false
     }),
     
     // Country Labels Layer
@@ -409,17 +430,17 @@ export default function ThreatMapDeckGL({ filters, events }) {
   );
 }
 
-// Helper function to get color based on severity - CheckPoint style
+// Helper function to get color based on severity - Professional like ReactGlobe
 function getSeverityColor(severity) {
   switch (severity) {
     case 'high':
-      return [255, 100, 50]; // Bright Red-Orange
+      return [255, 60, 60]; // Bright Red like ReactGlobe
     case 'medium':
-      return [255, 200, 50]; // Bright Orange-Yellow
+      return [255, 140, 0]; // Bright Orange
     case 'low':
-      return [255, 255, 100]; // Bright Yellow
+      return [0, 200, 255]; // Bright Blue
     default:
-      return [255, 180, 0]; // CheckPoint Orange
+      return [0, 255, 150]; // Bright Cyan-Green
   }
 }
 
