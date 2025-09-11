@@ -9,24 +9,24 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@deck.gl/core": "^9.1.14",
-    "@deck.gl/geo-layers": "^9.1.14",
-    "@deck.gl/layers": "^9.1.14",
-    "@deck.gl/react": "^9.1.14",
-    "@luma.gl/constants": "^9.1.9",
-    "@luma.gl/core": "^9.1.9",
-    "d3": "^7.8.5",
-    "deck.gl": "^9.1.14",
+    "d3": "^7.9.0",
     "next": "14.0.4",
     "react": "^18",
     "react-dom": "^18",
-    "topojson-client": "^3.1.0"
+    "topojson-client": "^3.1.0",
+    "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "@types/d3": "^7.4.3",
+    "@types/node": "24.3.1",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "@types/topojson-client": "^3.1.0",
     "autoprefixer": "^10.4.16",
     "eslint": "^8",
     "eslint-config-next": "14.0.4",
     "postcss": "^8.4.31",
-    "tailwindcss": "^3.3.0"
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
   }
 }

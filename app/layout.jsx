@@ -1,14 +1,14 @@
 import '../styles/globals.css'
 
 export const metadata = {
-  title: 'Threat Map - Real-time Threat Visualization',
-  description: 'Interactive threat map showing global cybersecurity events in real-time',
+  title: 'World Map - D3 + TopoJSON',
+  description: 'Interactive world map built with D3.js and TopoJSON',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="bg-slate-950 min-h-screen">{children}</body>
+      <body className="bg-gray-50 min-h-screen">{children}</body>
     </html>
   )
 }
